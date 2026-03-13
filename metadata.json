@@ -1,0 +1,9 @@
+{
+  "name": "AI Learning Intelligence System",
+  "description": "An AI-powered academic advisor that analyzes study materials, generates adaptive quizzes, detects knowledge gaps, and provides personalized tutoring.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}

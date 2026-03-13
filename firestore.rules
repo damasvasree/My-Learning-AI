@@ -1,0 +1,92 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    // Collection: users
+    // Fields: uid, fullName, email, educationLevel, createdAt
+    
+    // Collection: study_materials
+    // Fields: userId, title, type, content, extractedTopics, summary, createdAt
+    
+    // Collection: quiz_results
+    // Fields: userId, materialId, score, totalQuestions, answers, timestamp
+    
+    // Collection: topic_analysis
+    // Fields: userId, topic, masteryLevel, lastUpdated
+    
+    // Collection: study_plans
+    // Fields: userId, planDate, tasks, createdAt
+    
+    // Collection: user_activity
+    // Fields: userId, date, activityType, quizScore
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'fullName', 'email', 'educationLevel']) &&
+             data.uid is string &&
+             data.fullName is string && data.fullName.size() < 100 &&
+             data.email is string &&
+             data.educationLevel in ['school', 'college', 'professional'];
+    }
+
+    function isValidMaterial(data) {
+      return data.userId == request.auth.uid &&
+             data.title is string && data.title.size() < 200 &&
+             data.type in ['pdf', 'ppt', 'text', 'youtube'];
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isOwner(userId) && isValidUser(request.resource.data);
+    }
+
+    match /study_materials/{materialId} {
+      allow read: if isDocOwner();
+      allow create: if isAuthenticated() && isValidMaterial(request.resource.data);
+      allow update: if isDocOwner() && isValidMaterial(request.resource.data);
+      allow delete: if isDocOwner();
+    }
+
+    match /quiz_results/{resultId} {
+      allow read: if isDocOwner();
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+    }
+
+    match /topic_analysis/{analysisId} {
+      allow read: if isDocOwner();
+      allow write: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+    }
+
+    match /study_plans/{planId} {
+      allow read: if isDocOwner();
+      allow write: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+    }
+
+    match /user_activity/{activityId} {
+      allow read: if isDocOwner();
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+    }
+  }
+}
